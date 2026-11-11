@@ -1,10 +1,10 @@
 # BusMate BD: Software Requirements Specification
 
-Version: 0.2 (draft for architecture review)
+Version: 0.3 (requirements approved, architecture in progress)
 Project: Smart Bus Reservation and Live Tracking Platform
 Target market: Bangladesh
 
-Items marked DEC need a decision before this document is approved. A proposed default is given for each, and the document is written as if the default is accepted.
+Decisions DEC-1 to DEC-6 were accepted on 2026-11-11 with the proposed defaults.
 
 ## 1. Introduction
 
@@ -63,6 +63,7 @@ There is no platform administration interface in version 1. Operator accounts ar
 - FR-O6: View the passenger manifest: name, phone, gender, seat, boarding stop, drop-off stop, status.
 - FR-O7: Mark passengers as boarded.
 - FR-O8: View trip occupancy and basic statistics.
+- FR-O9: Create driver accounts for their own drivers.
 
 ### Driver
 - FR-D1: Log in and see only the trips assigned to them.
@@ -117,7 +118,7 @@ PostgreSQL, Redis, Apache Kafka, OpenStreetMap, Leaflet, the browser Geolocation
 - BR-10: If payment succeeds after the hold has expired, the system confirms the seat only if it is still free. Otherwise the payment is marked for reversal and the passenger is told (DEC-2).
 
 ### 6.3 Gender display and women-only neighbours
-These rules need your decision (DEC-3 to DEC-5). The text below is my proposal.
+These rules were decided as DEC-3 to DEC-5.
 - BR-11: Gender is self-declared per passenger at booking. It is not verified, and the screen says so.
 - BR-12: Passengers choose male, female or prefer not to say. "Prefer not to say" shows a neutral icon and counts as unrestricted for adjacency rules.
 - BR-13: Other passengers see only a gender icon, and only on CONFIRMED seats. Held seats show as taken with no icon. Names, phone numbers, ages and stops are never shown to other passengers (DEC-3).
