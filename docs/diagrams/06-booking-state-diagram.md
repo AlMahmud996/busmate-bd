@@ -58,7 +58,7 @@ Every transition runs in one database transaction that also writes the outbox ro
 | T6 | PENDING_PAYMENT to CANCELLED | PaymentFailed | Status is PENDING_PAYMENT. | `is_active` false. Reason PAYMENT_FAILED. [SRS acceptance criterion 5] | BookingCancelled, SeatReleased |
 | T7 | PENDING_PAYMENT to EXPIRED | Expiry sweeper | `hold_expires_at` has passed and no result arrived. | Same as T3. | BookingExpired, SeatReleased |
 | T8 | EXPIRED to CONFIRMED | PaymentSucceeded arriving late | Every seat can be made active again (the unique index accepts each one) and no neighbour rule is broken (SD-2). All or none. | `is_active` true on all seats. `confirmed_at` set. [SRS BR-10] | BookingConfirmed |
-| T9 | EXPIRED, no change | PaymentSucceeded arriving late | At least one seat is taken, or the neighbour rule is broken. | No seat change. History row LATE_PAYMENT_SEAT_TAKEN. [SRS BR-10] | PaymentReversalRequested |
+| T9 | EXPIRED, no change | PaymentSucceeded arriving late | At least one seat is taken, or the neighbour rule is broken. | No seat change. History row LATE_PAYMENT_SEAT_TAKEN. [SRS BR-10] | PaymentReversalRequested, BookingLatePaymentRejected |
 
 ## 5. Moves that are not allowed
 
@@ -132,7 +132,7 @@ Decided on 2026-11-17, all accepted as recommended:
 | SD-5 | A success arriving after the deadline but before the sweeper marks the booking EXPIRED is confirmed (T5), not treated as late. | Yes. The seat is still exclusively held and nobody lost out, which matches BR-10. SRS BR-2 now says this. |
 | SD-6 | After T9 the booking stays EXPIRED, with a history reason, instead of becoming CANCELLED. | Yes. BookingExpired was already published, and a second terminal event would confuse consumers. The ticket screen can show "expired, payment reversed". |
 
-New events this diagram needs, for diagram 11: PaymentReversalRequested (Booking to Payment) and PaymentReversed (Payment to Booking, for the notification). Neither is in the original event list.
+New events this diagram needs, now defined in diagram 11: PaymentReversalRequested (Booking to Payment), PaymentReversed (Payment to Booking), and BookingLatePaymentRejected (Booking to Notification, so the passenger is told). Neither is in the original event list.
 
 ## 10. Release behaviour (FR-P12, transition T4)
 

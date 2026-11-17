@@ -42,7 +42,8 @@ flowchart TB
     GW --> NS
     GW -->|"rate limit counters"| REDIS
 
-    BS -->|"REST: layout, fare, stops (cached)"| TS
+    BS -->|"REST: layout, fare, stops, checked on every new hold"| TS
+    TS -->|"REST: check driver at assignment"| US
 
     US --- UDB
     TS --- TDB
@@ -81,7 +82,7 @@ flowchart TB
 ## Communication
 
 1. Browsers talk only to the gateway. It checks the JWT and forwards the request, except on the public tracking routes, which are validated by the tracking token in Tracking Service.
-2. Booking Service calls Trip Service over REST for seat layout, fare and stops, with a short cache (decision from the architecture review).
+2. Booking Service calls Trip Service over REST for seat layout, fare and stops. Every new hold needs a successful call (diagram 05, D5). A short cache serves only seat map reads.
 3. Booking and Payment never call each other directly. The saga runs on Kafka: Booking sends a payment request, Payment answers with success or failure.
 4. Trip Service publishes trip events (trip started, completed, driver assigned). Tracking Service consumes them to open and close tracking sessions.
 5. Notification Service consumes events and turns them into stored in-app notifications.
@@ -94,7 +95,7 @@ The gateway has no route to Payment Service. Passengers can only trigger a payme
 | If this fails | What happens | Version 1 behaviour |
 |---|---|---|
 | API Gateway | Every client loses access | Accepted single point of failure. Later: run two instances |
-| Trip Service | Search and trip management stop | Booking can still hold seats for trips whose layout it has cached. New trips are not bookable |
+| Trip Service | Search and trip management stop | Booking cannot create new holds, because every hold needs a live check with Trip Service (diagram 05, D5). Existing bookings, payments and tracking continue, and the seat map can show a cached layout |
 | Booking Service | No holds, bookings or seat map | Payment messages wait in Kafka and are processed when it returns |
 | Payment Service | Payment requests wait | Holds expire after 5 minutes. A late success follows BR-10 |
 | Redis | Fast seat holds and last position unavailable | Holds fall back to database-only locking (NFR-8). Last position falls back to the newest row in Postgres. Gateway rate limiting fails open |
