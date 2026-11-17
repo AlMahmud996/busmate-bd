@@ -43,7 +43,7 @@ sequenceDiagram
     alt Trip Service cannot confirm the trip
         B-->>P: 503, no hold is created
     end
-    B->>R: SET hold keys with NX and 300 s TTL, all seats or none
+    B->>R: SET hold keys with NX and a 15 s provisional TTL, all seats or none
     alt any seat already held in Redis
         B->>R: release the keys this request took
         B-->>P: 409 seat unavailable
@@ -58,6 +58,7 @@ sequenceDiagram
         B-->>P: 409 seat unavailable
     end
     B->>D: COMMIT
+    B->>R: extend the keys to the full hold time
     B-->>P: 201 booking_id, hold_expires_at
     B-)W: WebSocket seat update, HELD, new seat_version
 ```
@@ -68,7 +69,7 @@ sequenceDiagram
 2. The browser opens a WebSocket with a one-time ticket, because browsers cannot send an Authorization header on a WebSocket (diagram 04). Updates carry a `seat_version`, and the client ignores any update older than what it has.
 3. The hold request carries a `client_request_id`. A double click, or a retry after a timeout, finds the existing booking and returns it instead of creating a second one.
 4. Booking Service must reach Trip Service for every new hold [D5]. It validates the trip is bookable, the seats belong to it, and the stops are in order, and it receives the fare and the data for the booking snapshot [SRS BR-7].
-5. Redis is the fast first gate. All seat keys are taken together or none are, using one atomic script, so a request for three seats never leaves two of them locked. The key value is the booking id.
+5. Redis is the fast first gate. All seat keys are taken together or none are, using one atomic script, so a request for three seats never leaves two of them locked. The key value is the booking id. The keys start with a 15 second provisional TTL and are extended to the full hold time after the database commit, so a crash cannot leave a ghost key behind.
 6. The database transaction is the real guard. It expires overdue holds on these seats first (lazy expiry, SD-3), takes a lock on the neighbour pairs, checks the women-only rule, and inserts the booking and its seats. The unique index on active seats is the last line of defence [SRS BR-5].
 7. `hold_expires_at` is the database clock plus 5 minutes. The response sends it to the browser so the countdown starts from the server's time.
 8. The WebSocket update is sent after the commit, never before. SeatHeld is not published to Kafka in v1 (EV-1), so no outbox row is written.
@@ -130,7 +131,7 @@ sequenceDiagram
 |---|---|---|
 | Trip Service is down or slow | Booking cannot validate the trip | 503 and no hold. Nothing was changed [D5]. |
 | Redis is down | The fast gate is unavailable | Booking skips Redis and relies on the database lock and unique index. Slower, still correct [SRS NFR-8]. |
-| Booking crashes after taking Redis keys but before the database insert | Orphan keys: a seat looks held in Redis for up to 5 minutes though no booking exists | When a request fails on an existing key, it checks the database. If no active booking owns that seat, the key is an orphan and is replaced (SQ-3). |
+| Booking crashes after taking Redis keys but before the database insert | Orphan keys: a seat looks held in Redis though no booking exists | The keys only have a 15 second provisional TTL until the commit, so the ghost key disappears on its own (SQ-3). |
 | The database insert fails | Unique index or neighbour rule | Rollback, Redis keys released, 409. |
 | The WebSocket push is lost | Another viewer's map is out of date | The database is the truth. A reconnecting client reloads the map, and a hold attempt on a taken seat fails cleanly. |
 | The same hold request arrives twice | Possible double booking | `client_request_id` returns the existing booking. |
@@ -155,7 +156,7 @@ Already settled and used here: D5 (live Trip Service check for every hold), SD-3
 |---|---|---|
 | SQ-1 | How does the app learn the payment result: polling the booking, or a push? | Poll every 2 seconds. It is the simplest and needs no new socket. A notification also arrives over the notification WebSocket. |
 | SQ-2 | The women-only rule looks at two seats at once, so two bookings for neighbouring seats could pass the check at the same time (Q5 from diagram 05). | Take a PostgreSQL advisory lock per trip and seat pair inside the transaction. It is held until the transaction ends, so the checks happen one after the other. |
-| SQ-3 | After a crash, Redis can hold an orphan key for a seat no booking owns. | On a key conflict, check the database. If no active booking owns the seat, replace the key. Without this a seat can look taken for up to 5 minutes. |
+| SQ-3 | After a crash, Redis can hold an orphan key for a seat no booking owns. | Take the keys with a 15 second provisional TTL and extend them after the commit. Checking the database on a conflict would be wrong: just before the commit the row does not exist yet, so a live hold would look like an orphan (found while drawing diagram 08). |
 | SQ-4 | A person could create many holds to block seats for others. The SRS has no limit. | One active hold or pending payment per passenger per trip, plus a rate limit at the gateway on hold requests. This is a new rule, so it needs your approval. |
 | SQ-5 | Who creates `payment_request_id`? | Booking Service, as a new random id when the passenger pays. The client never chooses it. |
 | SQ-6 | What should the failed hold response contain? | 409 with the list of seat ids that were unavailable, so the app can mark exactly those seats. |
