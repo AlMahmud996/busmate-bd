@@ -1,6 +1,6 @@
 # BusMate BD: Software Requirements Specification
 
-Version: 0.3 (requirements approved, architecture in progress)
+Version: 0.4 (requirements approved, architecture in progress)
 Project: Smart Bus Reservation and Live Tracking Platform
 Target market: Bangladesh
 
@@ -48,6 +48,7 @@ There is no platform administration interface in version 1. Operator accounts ar
 - FR-P9: View booking history.
 - FR-P10: Create, view and revoke a tracking link for a confirmed booking.
 - FR-P11: Receive in-app notifications when payment succeeds or fails and when the bus is near the boarding stop.
+- FR-P12: A passenger may release their own seat hold while the booking is in HELD status. The system releases all seats of that booking and notifies other clients of the change. A booking that is PENDING_PAYMENT, CONFIRMED, CANCELLED or EXPIRED cannot be released. Repeating the request on a booking that is already released returns the current status without error. A passenger can release only their own booking.
 
 ### Relative
 - FR-R1: Open a tracking link without logging in.
@@ -105,7 +106,7 @@ PostgreSQL, Redis, Apache Kafka, OpenStreetMap, Leaflet, the browser Geolocation
 
 ### 6.1 Seat holds and booking states
 - BR-1: A seat can be held by only one passenger at a time for a given trip.
-- BR-2: A hold lasts 5 minutes from creation and is not extended. An expired hold cannot be used to confirm a booking.
+- BR-2: A hold lasts 5 minutes from creation and is not extended. An expired hold cannot be used to confirm a booking. A booking counts as expired once its status becomes EXPIRED; a payment result that arrives before that is processed normally.
 - BR-3: Booking states are HELD, PENDING_PAYMENT, CONFIRMED, CANCELLED, EXPIRED. The transition diagram is part of the architecture documents.
 - BR-4: When a hold expires or payment fails, the seat becomes available again.
 - BR-5: Two bookings in an active state (HELD, PENDING_PAYMENT, CONFIRMED) never share a seat on the same trip. In version 1 this holds for the whole trip, even when passengers have different drop-off stops. The database enforces this, not only Redis.
@@ -115,7 +116,7 @@ PostgreSQL, Redis, Apache Kafka, OpenStreetMap, Leaflet, the browser Geolocation
 ### 6.2 Payment
 - BR-8: A booking becomes CONFIRMED only after successful payment.
 - BR-9: A repeated payment request with the same idempotency key must not charge twice.
-- BR-10: If payment succeeds after the hold has expired, the system confirms the seat only if it is still free. Otherwise the payment is marked for reversal and the passenger is told (DEC-2).
+- BR-10: If payment succeeds after the hold has expired, the system confirms the booking only if every seat is still free and no women-only neighbour request (BR-14) is broken. Otherwise no seat is confirmed, the payment is marked for reversal and the passenger is told (DEC-2).
 
 ### 6.3 Gender display and women-only neighbours
 These rules were decided as DEC-3 to DEC-5.

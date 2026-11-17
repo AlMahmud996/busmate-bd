@@ -1,8 +1,8 @@
 # Diagram 06: Booking state diagram
 
-Status: DRAFT for review. Not final until approved. Based on SRS v0.3, diagram 04 and diagram 05 v2.
+Status: APPROVED on 2026-11-17. Based on SRS v0.4, diagram 04 and diagram 05 v2.
 
-Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Open questions are in section 9.
+Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Decisions are in section 9.
 
 ## 1. What it shows
 
@@ -30,7 +30,7 @@ stateDiagram-v2
     end note
 ```
 
-T4 is a recommendation (SD-1). Everything else follows the SRS. In version 1 a confirmed booking is final, because cancellation and refunds are out of scope [SRS section 1.3].
+T4 is FR-P12 in SRS v0.4. Everything else follows the SRS. In version 1 a confirmed booking is final, because cancellation and refunds are out of scope [SRS section 1.3].
 
 ## 3. States
 
@@ -53,7 +53,7 @@ Every transition runs in one database transaction that also writes the outbox ro
 | T1 | (new) to HELD | Passenger creates a hold | Trip Service confirms the trip and seats (D5). 1 to 4 seats. Every seat is free. The `client_request_id` is new. | Insert booking and booking_seats with `is_active` true. `hold_expires_at` is now plus 5 minutes. Redis keys with a 300 second TTL. | SeatHeld |
 | T2 | HELD to PENDING_PAYMENT | Passenger pays | Status is HELD and `hold_expires_at` is still in the future, by the database clock. | Set `payment_request_id`. The deadline does not move [SRS BR-2]. | PaymentRequested |
 | T3 | HELD to EXPIRED | Expiry sweeper, or lazy expiry (SD-3) | `hold_expires_at` has passed. | `is_active` false on all seats. Redis keys deleted. | BookingExpired, SeatReleased |
-| T4 | HELD to CANCELLED [REC] | Passenger releases the hold | Status is HELD. | `is_active` false. Reason PASSENGER_RELEASED. | BookingCancelled, SeatReleased |
+| T4 | HELD to CANCELLED [SRS FR-P12] | Passenger releases the hold | Status is HELD and the booking belongs to the caller. A repeated request returns the current status. | `is_active` false. Reason PASSENGER_RELEASED. | BookingCancelled, SeatReleased |
 | T5 | PENDING_PAYMENT to CONFIRMED | PaymentSucceeded | Status is PENDING_PAYMENT (see section 6 for the moment around the deadline). | `confirmed_at` set. Seats stay active. | BookingConfirmed |
 | T6 | PENDING_PAYMENT to CANCELLED | PaymentFailed | Status is PENDING_PAYMENT. | `is_active` false. Reason PAYMENT_FAILED. [SRS acceptance criterion 5] | BookingCancelled, SeatReleased |
 | T7 | PENDING_PAYMENT to EXPIRED | Expiry sweeper | `hold_expires_at` has passed and no result arrived. | Same as T3. | BookingExpired, SeatReleased |
@@ -121,15 +121,25 @@ Settled by this diagram:
 - Hold timeouts apply to HELD and PENDING_PAYMENT alike. There is no grace period, so the hold is never extended [SRS BR-2]. A payment that finishes late is handled by T8 and T9.
 - A booking does not change status when a seat is boarded, or when the trip ends. Boarding is a per-seat column in booking_seats.
 
-Open for your decision:
+Decided on 2026-11-17, all accepted as recommended:
 
-| ID | Question | Recommendation |
+| ID | Question | Decision |
 |---|---|---|
-| SD-1 | May a passenger release a hold before it expires (T4)? Not in the SRS. | Yes. It frees seats sooner for others and is a normal "back" action. It needs one new endpoint and one reason value. |
-| SD-2 | On a late success, a neighbouring seat may have been booked in the meantime, so a woman's "keep my neighbour for women" request can no longer be honoured. | Treat it as "seat not available" and reverse the payment (T9), because the preference is a safety feature. The alternative is to confirm and drop the preference silently, which I would not do. |
+| SD-1 | May a passenger release a hold before it expires (T4)? Not in the SRS. | Yes. It frees seats sooner for others and is a normal "back" action. This is FR-P12 in the SRS. It needs one endpoint and one reason value. |
+| SD-2 | On a late success, a neighbouring seat may have been booked in the meantime, so a woman's "keep my neighbour for women" request can no longer be honoured. | Treat it as "seat not available" and reverse the payment (T9), because the preference is a safety feature. The alternative is to confirm and drop the preference silently, which I would not do. SRS BR-10 now says this. |
 | SD-3 | Lazy expiry on contention, in addition to the sweeper? | Yes. Without it a seat can stay blocked for up to a full sweep interval after its hold ended. |
 | SD-4 | Sweeper interval. | Every 10 seconds, so a seat is free again at most about 10 seconds after the 5 minutes, even without lazy expiry. |
-| SD-5 | A success arriving after the deadline but before the sweeper marks the booking EXPIRED is confirmed (T5), not treated as late. | Yes. The seat is still exclusively held and nobody lost out, which matches BR-10. |
+| SD-5 | A success arriving after the deadline but before the sweeper marks the booking EXPIRED is confirmed (T5), not treated as late. | Yes. The seat is still exclusively held and nobody lost out, which matches BR-10. SRS BR-2 now says this. |
 | SD-6 | After T9 the booking stays EXPIRED, with a history reason, instead of becoming CANCELLED. | Yes. BookingExpired was already published, and a second terminal event would confuse consumers. The ticket screen can show "expired, payment reversed". |
 
 New events this diagram needs, for diagram 11: PaymentReversalRequested (Booking to Payment) and PaymentReversed (Payment to Booking, for the notification). Neither is in the original event list.
+
+## 10. Release behaviour (FR-P12, transition T4)
+
+| Booking status when "release" is called | Result |
+|---|---|
+| HELD, owned by the caller | Becomes CANCELLED with reason PASSENGER_RELEASED. All seats are freed. BookingCancelled and SeatReleased are published. |
+| CANCELLED because of an earlier release | Success. The current status is returned (the call is idempotent). |
+| EXPIRED | Success. The response says the hold already expired. |
+| PENDING_PAYMENT or CONFIRMED | Rejected with a conflict error. A payment is already on its way, or the booking is final. |
+| Belongs to another passenger, or does not exist | Rejected as not found, so nothing about other bookings leaks. |
