@@ -1,8 +1,8 @@
 # Diagram 11: Kafka event-driven architecture
 
-Status: DRAFT for review. Not final until approved. Based on SRS v0.4 and diagrams 03, 04, 05 v2 and 06.
+Status: APPROVED on 2026-11-23. Based on SRS v0.5 and diagrams 03, 04, 05 v2 and 06.
 
-Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Open questions are in section 12.
+Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Decisions are in section 12.
 
 ## 1. What it shows
 
@@ -231,9 +231,9 @@ Settled by this diagram, following earlier decisions:
 - At-least-once delivery, with the idempotent consumer pattern. No claim of exactly-once processing.
 - Aggregate id as key, one topic per domain with a version suffix.
 
-Open for your decision:
+Decided on 2026-11-23, all accepted as recommended:
 
-| ID | Question | Recommendation |
+| ID | Question | Decision |
 |---|---|---|
 | EV-1 | Do SeatHeld, SeatReleased, BookingExpired and LocationUpdated get published in v1, though nothing consumes them? | No. Keep the contracts, do not publish. It saves writes and avoids unused topics. Switch them on when a consumer exists. |
 | EV-2 | Message format and schema management. | JSON with JSON Schema files in the repo, checked in tests. No schema registry, which would be an extra container. |

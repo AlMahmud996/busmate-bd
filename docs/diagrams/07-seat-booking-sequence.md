@@ -1,8 +1,8 @@
 # Diagram 07: Seat booking sequence
 
-Status: DRAFT for review. Not final until approved. Based on SRS v0.4 and diagrams 03, 05 v2, 06 and 11.
+Status: APPROVED on 2026-11-23. Based on SRS v0.5 and diagrams 03, 05 v2, 06 and 11.
 
-Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Open questions are in section 7.
+Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Decisions are in section 7.
 
 ## 1. What it shows
 
@@ -150,13 +150,13 @@ sequenceDiagram
 
 Already settled and used here: D5 (live Trip Service check for every hold), SD-3 (lazy expiry), EV-1 (no SeatHeld on Kafka), the one-time WebSocket ticket (diagram 04).
 
-## 7. Open for your decision
+## 7. Decisions taken on 2026-11-23, all accepted as recommended
 
-| ID | Question | Recommendation |
+| ID | Question | Decision |
 |---|---|---|
 | SQ-1 | How does the app learn the payment result: polling the booking, or a push? | Poll every 2 seconds. It is the simplest and needs no new socket. A notification also arrives over the notification WebSocket. |
 | SQ-2 | The women-only rule looks at two seats at once, so two bookings for neighbouring seats could pass the check at the same time (Q5 from diagram 05). | Take a PostgreSQL advisory lock per trip and seat pair inside the transaction. It is held until the transaction ends, so the checks happen one after the other. |
 | SQ-3 | After a crash, Redis can hold an orphan key for a seat no booking owns. | Take the keys with a 15 second provisional TTL and extend them after the commit. Checking the database on a conflict would be wrong: just before the commit the row does not exist yet, so a live hold would look like an orphan (found while drawing diagram 08). |
-| SQ-4 | A person could create many holds to block seats for others. The SRS has no limit. | One active hold or pending payment per passenger per trip, plus a rate limit at the gateway on hold requests. This is a new rule, so it needs your approval. |
+| SQ-4 | A person could create many holds to block seats for others. The SRS has no limit. | One active hold or pending payment per passenger per trip, plus a rate limit at the gateway on hold requests. This is BR-30 in the SRS. |
 | SQ-5 | Who creates `payment_request_id`? | Booking Service, as a new random id when the passenger pays. The client never chooses it. |
 | SQ-6 | What should the failed hold response contain? | 409 with the list of seat ids that were unavailable, so the app can mark exactly those seats. |

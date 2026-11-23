@@ -1,8 +1,8 @@
 # Diagram 09: Payment saga sequence
 
-Status: DRAFT for review. Not final until approved. Based on SRS v0.4 and diagrams 05 v2, 06, 07, 08 and 11.
+Status: APPROVED on 2026-11-23. Based on SRS v0.5 and diagrams 05 v2, 06, 07, 08 and 11.
 
-Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Open questions are in section 9.
+Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Decisions are in section 9.
 
 ## 1. What it shows
 
@@ -138,9 +138,9 @@ Because Payment writes its payment, its transaction row and its outbox row in on
 
 Settled by this diagram, following earlier ones: orchestrated saga with Booking as the orchestrator (SRS prompt, diagram 03), the hold deadline as the saga timeout (SRS BR-2), the late-payment rules of diagram 06, and the outbox, processed-events and status guards of diagram 11.
 
-## 9. Open for your decision
+## 9. Decisions taken on 2026-11-23, all accepted as recommended
 
-| ID | Question | Recommendation |
+| ID | Question | Decision |
 |---|---|---|
 | PS-1 | When a booking expires with a payment still pending, should Booking send a "cancel payment" message so the charge does not happen later? | No in v1. It needs one more event and does not remove the late case, because the cancel can arrive after the charge. The late path (T8, T9) already covers it. |
 | PS-2 | Can a late success confirm a booking after the trip has already departed? Not covered by the SRS. | No. Treat it as T9: stay EXPIRED, reverse the payment. A seat on a bus that has left is of no use. |

@@ -1,8 +1,8 @@
 # Diagram 08: Concurrent booking sequence
 
-Status: DRAFT for review. Not final until approved. Based on SRS v0.4 and diagrams 05 v2, 06, 07 and 11. It assumes the SQ-1 to SQ-6 recommendations of diagram 07 were accepted, with the one change in section 7.
+Status: APPROVED on 2026-11-23. Based on SRS v0.5 and diagrams 05 v2, 06, 07 and 11. It uses the SQ-1 to SQ-6 decisions of diagram 07, with the one change in section 7.
 
-Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Open questions are in section 8.
+Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Decisions are in section 11.
 
 ## 1. What it shows
 
@@ -158,9 +158,9 @@ After each test, run a check query: no `(trip_id, trip_seat_id)` has more than o
 
 Settled: SQ-2 from diagram 07 (advisory locks per neighbour pair) is adopted here as designed. Redis is only a fast gate, and the database holds the final decision.
 
-## 11. Open for your decision
+## 11. Decisions taken on 2026-11-23, all accepted as recommended
 
-| ID | Question | Recommendation |
+| ID | Question | Decision |
 |---|---|---|
 | CQ-1 | Lock per neighbour pair, or one lock per trip? | Per pair, with a 2 second lock timeout. A per-trip lock is simpler, but it makes every booking on a trip wait for every other. |
 | CQ-2 | What does the passenger see when a hold is refused because of the women-only rules? | The same generic "seat unavailable" as any other conflict. A specific message would tell people the gender of a neighbour who has only a held seat, which [SRS DEC-3] hides until confirmation. |

@@ -615,3 +615,20 @@ Entities I would cut first for a smaller model: booking_status_history, refresh_
 | Q8 | How long are passenger name, phone and gender kept after a trip? (NFR-6) | Decide a retention period before any real use. Not needed for the learning version. |
 | Q9 | Where does `trips.operator_name` come from, since there is no operators table? | Copy it from the operator's name in the JWT when the trip is created. |
 | Q10 | City is free text on stops, so spellings can differ. | Use a fixed pick list in the operator UI. Add a cities table later only if needed. |
+
+## 14. Changes after diagrams 06 to 09
+
+Added after the booking decisions of 2026-11-23:
+
+```sql
+-- One unpaid booking per passenger per trip, so seats cannot be hoarded [SRS BR-30]
+CREATE UNIQUE INDEX uq_one_unpaid_booking
+    ON bookings (user_id, trip_id) WHERE status IN ('HELD', 'PENDING_PAYMENT');
+```
+
+Closed open questions:
+
+- Q4 (late payment on an expired booking): EXPIRED moves to CONFIRMED only through T8 in diagram 06, when all seats can be re-activated, no neighbour rule is broken and the trip has not departed.
+- Q5 (women-only rule across two seats): a PostgreSQL advisory lock per neighbour pair, taken in ascending order inside the hold transaction (diagram 08).
+
+Q1 to Q3 and Q6 to Q10 remain open and are settled in later steps.

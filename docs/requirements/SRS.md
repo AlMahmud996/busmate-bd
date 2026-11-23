@@ -1,6 +1,6 @@
 # BusMate BD: Software Requirements Specification
 
-Version: 0.4 (requirements approved, architecture in progress)
+Version: 0.5 (requirements approved, architecture in progress)
 Project: Smart Bus Reservation and Live Tracking Platform
 Target market: Bangladesh
 
@@ -112,11 +112,12 @@ PostgreSQL, Redis, Apache Kafka, OpenStreetMap, Leaflet, the browser Geolocation
 - BR-5: Two bookings in an active state (HELD, PENDING_PAYMENT, CONFIRMED) never share a seat on the same trip. In version 1 this holds for the whole trip, even when passengers have different drop-off stops. The database enforces this, not only Redis.
 - BR-6: Each booking stores boarding and drop-off stop positions, so seat reuse across segments can be added later.
 - BR-7: Fare, trip details and stop names are copied into the booking at creation time (snapshot), so later changes to the trip do not alter existing tickets.
+- BR-30: A passenger can have only one booking in HELD or PENDING_PAYMENT status per trip at a time, so seats cannot be hoarded. Confirmed bookings do not count.
 
 ### 6.2 Payment
 - BR-8: A booking becomes CONFIRMED only after successful payment.
 - BR-9: A repeated payment request with the same idempotency key must not charge twice.
-- BR-10: If payment succeeds after the hold has expired, the system confirms the booking only if every seat is still free and no women-only neighbour request (BR-14) is broken. Otherwise no seat is confirmed, the payment is marked for reversal and the passenger is told (DEC-2).
+- BR-10: If payment succeeds after the hold has expired, the system confirms the booking only if every seat is still free, no women-only neighbour request (BR-14) is broken and the trip has not departed. Otherwise no seat is confirmed, the payment is marked for reversal and the passenger is told (DEC-2).
 
 ### 6.3 Gender display and women-only neighbours
 These rules were decided as DEC-3 to DEC-5.
@@ -127,6 +128,9 @@ These rules were decided as DEC-3 to DEC-5.
 - BR-15: That restriction is lifted 2 hours before departure so the seat can still be sold (DEC-4).
 - BR-16: There is no opt-out of the gender icon in version 1, because the safety feature depends on it. The booking page says so before submission (DEC-5).
 - BR-17: The operator sees full passenger details in the manifest.
+- BR-31: A women-only neighbour request is refused when a neighbouring seat already has an active booking from a male passenger, whether held, pending or confirmed.
+- BR-32: Seats in the same booking never restrict each other under BR-14 and BR-31, so a woman can sit next to a male relative.
+- BR-33: A hold refused because of a women-only rule gets the same generic "seat unavailable" answer as any other conflict, so it does not reveal the gender of neighbours whose seats are only held (DEC-3).
 
 ### 6.4 Stop-wise boarding
 - BR-18: Boarding stop must come before drop-off stop in the route order.

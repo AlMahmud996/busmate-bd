@@ -57,8 +57,8 @@ Every transition runs in one database transaction that also writes the outbox ro
 | T5 | PENDING_PAYMENT to CONFIRMED | PaymentSucceeded | Status is PENDING_PAYMENT (see section 6 for the moment around the deadline). | `confirmed_at` set. Seats stay active. | BookingConfirmed |
 | T6 | PENDING_PAYMENT to CANCELLED | PaymentFailed | Status is PENDING_PAYMENT. | `is_active` false. Reason PAYMENT_FAILED. [SRS acceptance criterion 5] | BookingCancelled, SeatReleased |
 | T7 | PENDING_PAYMENT to EXPIRED | Expiry sweeper | `hold_expires_at` has passed and no result arrived. | Same as T3. | BookingExpired, SeatReleased |
-| T8 | EXPIRED to CONFIRMED | PaymentSucceeded arriving late | Every seat can be made active again (the unique index accepts each one) and no neighbour rule is broken (SD-2). All or none. | `is_active` true on all seats. `confirmed_at` set. [SRS BR-10] | BookingConfirmed |
-| T9 | EXPIRED, no change | PaymentSucceeded arriving late | At least one seat is taken, or the neighbour rule is broken. | No seat change. History row LATE_PAYMENT_SEAT_TAKEN. [SRS BR-10] | PaymentReversalRequested, BookingLatePaymentRejected |
+| T8 | EXPIRED to CONFIRMED | PaymentSucceeded arriving late | Every seat can be made active again (the unique index accepts each one), no neighbour rule is broken (SD-2), and the trip has not departed (PS-2). All or none. | `is_active` true on all seats. `confirmed_at` set. [SRS BR-10] | BookingConfirmed |
+| T9 | EXPIRED, no change | PaymentSucceeded arriving late | At least one seat is taken, the neighbour rule is broken, or the trip has departed. | No seat change. History row LATE_PAYMENT_SEAT_TAKEN. [SRS BR-10] | PaymentReversalRequested, BookingLatePaymentRejected |
 
 ## 5. Moves that are not allowed
 
@@ -84,7 +84,7 @@ flowchart TD
     C -->|"CONFIRMED"| Z
     C -->|"CANCELLED"| Y["Ignore, log and alert"]
     C -->|"PENDING_PAYMENT"| D["T5: confirm"]
-    C -->|"EXPIRED"| E{"Make all seats active again?<br/>Unique index and neighbour rule"}
+    C -->|"EXPIRED"| E{"Make all seats active again?<br/>Unique index, neighbour rule, trip not departed"}
     E -->|"yes, all seats"| F["T8: confirm"]
     E -->|"no, any seat taken"| G["T9: stay EXPIRED<br/>request reversal<br/>notify passenger"]
 ```
