@@ -1,0 +1,43 @@
+name: busmate
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: busmate-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: postgres
+      USER_DB_NAME: ${USER_DB_NAME}
+      USER_DB_USER: ${USER_DB_USER}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      TRIP_DB_NAME: ${TRIP_DB_NAME}
+      TRIP_DB_USER: ${TRIP_DB_USER}
+      TRIP_DB_PASSWORD: ${TRIP_DB_PASSWORD}
+      BOOKING_DB_NAME: ${BOOKING_DB_NAME}
+      BOOKING_DB_USER: ${BOOKING_DB_USER}
+      BOOKING_DB_PASSWORD: ${BOOKING_DB_PASSWORD}
+      PAYMENT_DB_NAME: ${PAYMENT_DB_NAME}
+      PAYMENT_DB_USER: ${PAYMENT_DB_USER}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD}
+      TRACKING_DB_NAME: ${TRACKING_DB_NAME}
+      TRACKING_DB_USER: ${TRACKING_DB_USER}
+      TRACKING_DB_PASSWORD: ${TRACKING_DB_PASSWORD}
+      NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME}
+      NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    mem_limit: 512m
+
+volumes:
+  postgres_data:
