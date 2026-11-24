@@ -1,8 +1,8 @@
 # Diagram 10: Service communication
 
-Status: DRAFT for review. Not final until approved. Based on SRS v0.5 and diagrams 03, 04, 07, 09 and 11.
+Status: APPROVED on 2026-11-23. Based on SRS v0.5 and diagrams 03, 04, 07, 09 and 11.
 
-Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Open questions are in section 9.
+Legend: [SRS] is a confirmed requirement. [REC] is a recommendation, not in the SRS. Decisions are in section 9.
 
 ## 1. What it shows
 
@@ -168,9 +168,9 @@ After five failures in ten seconds, Booking stops calling Trip for ten seconds, 
 | Redis | No fast holds, no rate limits, no WebSocket tickets | Booking falls back to the database. Rate limits fail open. WebSocket connections cannot start until Redis returns, but REST still works. |
 | Tracking or Notification | Their own features stop | Nothing else is affected, since nobody calls them synchronously. |
 
-## 9. Open for your decision
+## 9. Decisions taken on 2026-11-23, all accepted as recommended
 
-| ID | Question | Recommendation |
+| ID | Question | Decision |
 |---|---|---|
 | SC-1 | How are internal calls secured? | Private network, no gateway route for `/internal`, and the user's JWT passed along. Service tokens or mutual TLS are a later step. |
 | SC-2 | Add a circuit breaker library (Resilience4j) for Booking to Trip? | Yes, for that one call. It is a standard answer to "what happens when a dependency is down" and costs one dependency. |
